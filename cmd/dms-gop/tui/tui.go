@@ -147,6 +147,7 @@ func (m *ResponsiveTUIModel) applyFetchData(msg fetchDataMsg) {
 				m.cpuHistory = m.cpuHistory[1:]
 			}
 		}
+		m.sortProcessesLocally()
 	}
 
 	m.updateProcessTable()
@@ -320,10 +321,14 @@ func sortForAction(act models.KeyAction) (gops.ProcSortBy, bool) {
 
 func (m *ResponsiveTUIModel) applySort(sortBy gops.ProcSortBy) tea.Cmd {
 	if m.sortBy == sortBy {
+		m.sortReversed = !m.sortReversed
+		m.sortProcessesLocally()
+		m.updateProcessTable()
 		return nil
 	}
 
 	m.sortBy = sortBy
+	m.sortReversed = false
 	m.fetchGeneration++
 	m.sortProcessesLocally()
 	m.updateProcessTable()

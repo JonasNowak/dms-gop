@@ -83,6 +83,7 @@ type ResponsiveTUIModel struct {
 	lastTempUpdate     time.Time
 
 	sortBy          gops.ProcSortBy
+	sortReversed    bool
 	ready           bool
 	showDetails     bool
 	selectedPID     int32

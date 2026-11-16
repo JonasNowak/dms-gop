@@ -1,8 +1,9 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -116,46 +117,79 @@ func (m *ResponsiveTUIModel) updateProcessTable() {
 	}
 }
 
+func defaultSortDesc(sortBy gops.ProcSortBy) bool {
+	switch sortBy {
+	case gops.SortByCPU, gops.SortByMemory:
+		return true
+	default:
+		return false
+	}
+}
+
+func (m *ResponsiveTUIModel) sortDescending() bool {
+	return defaultSortDesc(m.sortBy) != m.sortReversed
+}
+
+func compareProcessField(a, b *models.ProcessInfo, sortBy gops.ProcSortBy) int {
+	switch sortBy {
+	case gops.SortByCPU:
+		return cmp.Compare(a.CPU, b.CPU)
+	case gops.SortByMemory:
+		return cmp.Compare(a.MemoryKB, b.MemoryKB)
+	case gops.SortByName:
+		if c := cmp.Compare(strings.ToLower(a.Command), strings.ToLower(b.Command)); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Command, b.Command)
+	case gops.SortByPID:
+		return cmp.Compare(a.PID, b.PID)
+	default:
+		return 0
+	}
+}
+
 func (m *ResponsiveTUIModel) sortProcessesLocally() {
 	if m.metrics == nil || len(m.metrics.Processes) == 0 {
 		return
 	}
 
-	processes := m.metrics.Processes
+	desc := m.sortDescending()
+	slices.SortFunc(m.metrics.Processes, func(a, b *models.ProcessInfo) int {
+		c := compareProcessField(a, b, m.sortBy)
+		if desc {
+			c = -c
+		}
+		if c != 0 {
+			return c
+		}
+		return cmp.Compare(a.PID, b.PID)
+	})
+}
+
+func (m *ResponsiveTUIModel) sortIndicator() string {
+	var label string
 	switch m.sortBy {
 	case gops.SortByCPU:
-		sort.Slice(processes, func(i, j int) bool {
-			return processes[i].CPU > processes[j].CPU
-		})
+		label = "CPU"
 	case gops.SortByMemory:
-		sort.Slice(processes, func(i, j int) bool {
-			return processes[i].MemoryKB > processes[j].MemoryKB
-		})
+		label = "MEM"
 	case gops.SortByName:
-		sort.Slice(processes, func(i, j int) bool {
-			return strings.ToLower(processes[i].Command) < strings.ToLower(processes[j].Command)
-		})
+		label = "NAME"
 	case gops.SortByPID:
-		sort.Slice(processes, func(i, j int) bool {
-			return processes[i].PID < processes[j].PID
-		})
+		label = "PID"
+	default:
+		return ""
 	}
+
+	arrow := "↑"
+	if m.sortDescending() {
+		arrow = "↓"
+	}
+	return " " + arrow + label
 }
 
 func (m *ResponsiveTUIModel) renderProcessPanel(width, height int) string {
 	style := m.panelStyle(width, height)
-
-	sortIndicator := ""
-	switch m.sortBy {
-	case gops.SortByCPU:
-		sortIndicator = " ↓CPU"
-	case gops.SortByMemory:
-		sortIndicator = " ↓MEM"
-	case gops.SortByName:
-		sortIndicator = " ↓NAME"
-	case gops.SortByPID:
-		sortIndicator = " ↓PID"
-	}
 
 	groupIndicator := ""
 	if m.mergeChildren {
@@ -167,7 +201,7 @@ func (m *ResponsiveTUIModel) renderProcessPanel(width, height int) string {
 		searchIndicator = " /" + m.searchQuery
 	}
 
-	title := fmt.Sprintf("PROCESSES (%d)%s%s%s", len(m.visibleProcesses()), sortIndicator, groupIndicator, searchIndicator)
+	title := fmt.Sprintf("PROCESSES (%d)%s%s%s", len(m.visibleProcesses()), m.sortIndicator(), groupIndicator, searchIndicator)
 
 	tableHeight := max(
 		// borders + title line
