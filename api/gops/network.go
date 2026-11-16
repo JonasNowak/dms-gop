@@ -3,10 +3,10 @@ package gops_handler
 import (
 	"context"
 
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/duxlabs-dev/dux-go/httpapi"
 	"github.com/duxlabs-dev/dux-go/log"
-	"github.com/duxlabs-dev/dux-gop/models"
 )
 
 type NetworkResponse struct {

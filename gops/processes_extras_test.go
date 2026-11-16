@@ -5,43 +5,13 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/duxlabs-dev/dux-gop/models"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func ptr[T any](v T) *T { return &v }
 
-func TestProcessCursor_Extras(t *testing.T) {
-	clients := []gpuCursorClient{{PDev: "0000:0c:00.0", ID: 7, Engines: map[string][3]uint64{"gfx": {123, 0, 0}}}}
-	samples := []processSample{
-		{ProcessCursorData: models.ProcessCursorData{PID: 1, Ticks: 1, Timestamp: 1000}, start: 5, ioOK: true, io: [2]uint64{10, 20}, gpuOK: true, gpu: clients},
-		{ProcessCursorData: models.ProcessCursorData{PID: 2, Ticks: 2, Timestamp: 1001}, gpuOK: true},
-		{ProcessCursorData: models.ProcessCursorData{PID: 3, Ticks: 3, Timestamp: 1002}},
-	}
-	net := netBaseline{at: 1000, socks: map[uint64]sockBaseline{9: {10, 20, 1}, 1 << 60: {1, 2, 0}}}
-	got, gotNet := decodeCursor(encodeCursor(samples, net))
-	require.Len(t, got, 3)
-	assert.Equal(t, samples[0], *got[1])
-	assert.True(t, got[2].gpuOK, "sampled with no clients")
-	assert.False(t, got[3].gpuOK, "not sampled")
-	assert.Equal(t, net, gotNet)
-
-	// Malformed extras drop only the extras; the per-PID net format of older cursors is not a baseline.
-	for name, payload := range map[string]string{
-		"bad io and gpu": `{"t":5,"pid":[1,2],"cpu":[1000,2000],"dt":[0,1],"iop":[1,2],"ior":[1],"iow":[1,2],"g":"nope"}`,
-		"bad sockets":    `{"t":5,"pid":[1,2],"cpu":[1000,2000],"dt":[0,1],"ns":"nope","na":5}`,
-		"old net":        `{"t":5,"pid":[1,2],"cpu":[1000,2000],"dt":[0,1],"n":{"1":[[9,10,20]]},"nt":5}`,
-	} {
-		procs, n := decodeCursor(gzipB64(t, payload))
-		require.Len(t, procs, 2, name)
-		assert.Equal(t, 2.0, procs[2].Ticks, name)
-		assert.False(t, procs[1].ioOK || procs[1].gpuOK, name)
-		assert.Zero(t, n.at, name)
-	}
-}
-
-func TestMergeProcesses_Extras(t *testing.T) {
+func TestMergeProcesses_IOAndNet(t *testing.T) {
 	merge := func(rows ...*models.ProcessInfo) map[int32]*models.ProcessInfo {
 		out := map[int32]*models.ProcessInfo{}
 		for _, p := range mergeProcessesByExecutable(rows, false) {
@@ -50,36 +20,22 @@ func TestMergeProcesses_Extras(t *testing.T) {
 		return out
 	}
 
-	t.Run("sums are clamped and unknown members make a sum unknown", func(t *testing.T) {
-		root := merge(
-			&models.ProcessInfo{PID: 1, ExecutablePath: "/bin/a", GPU: ptr(30.0), GPUVideo: ptr(70.0), VRAMKB: ptr(uint64(100)), DiskRead: ptr(5.0), StartTime: 111},
-			&models.ProcessInfo{PID: 2, PPID: 1, ExecutablePath: "/bin/a", GPU: ptr(90.0), GPUVideo: ptr(40.0), VRAMKB: ptr(uint64(50)), StartTime: 222},
+	t.Run("IO sums and unknown members make a sum unknown", func(t *testing.T) {
+		summed := merge(
+			&models.ProcessInfo{PID: 1, ExecutablePath: "/bin/a", DiskRead: ptr(5.0), DiskWrite: ptr(10.0), StartTime: 111},
+			&models.ProcessInfo{PID: 2, PPID: 1, ExecutablePath: "/bin/a", DiskRead: ptr(2.0), DiskWrite: ptr(3.0), StartTime: 222},
 		)[1]
-		assert.Equal(t, 100.0, *root.GPU)
-		assert.Equal(t, 100.0, *root.GPUVideo)
-		assert.Equal(t, uint64(150), *root.VRAMKB)
-		assert.Nil(t, root.DiskRead, "known parent plus unknown child is unknown")
-		assert.Equal(t, int64(111), root.StartTime)
-	})
+		assert.Equal(t, 7.0, *summed.DiskRead)
+		assert.Equal(t, 13.0, *summed.DiskWrite)
+		assert.Equal(t, int64(111), summed.StartTime)
 
-	t.Run("an unmonitored member drops GPU and VRAM", func(t *testing.T) {
-		known := func(pid, ppid int32) *models.ProcessInfo {
-			return &models.ProcessInfo{PID: pid, PPID: ppid, ExecutablePath: "/bin/a", GPU: ptr(10.0), VRAMKB: ptr(uint64(100))}
-		}
-		unmonitored := func(pid, ppid int32) *models.ProcessInfo {
-			return &models.ProcessInfo{PID: pid, PPID: ppid, ExecutablePath: "/bin/a", GPUUnmonitored: true}
-		}
-		for name, root := range map[string]*models.ProcessInfo{
-			"child":  merge(known(1, 0), unmonitored(2, 1))[1],
-			"parent": merge(unmonitored(1, 0), known(2, 1))[1],
-		} {
-			assert.True(t, root.GPUUnmonitored, name)
-			assert.Nil(t, root.GPU, name)
-			assert.Nil(t, root.VRAMKB, name)
-		}
-		root := merge(known(1, 0), known(2, 1))[1]
-		assert.False(t, root.GPUUnmonitored)
-		assert.Equal(t, 20.0, *root.GPU)
+		unknown := merge(
+			&models.ProcessInfo{PID: 1, ExecutablePath: "/bin/a", DiskRead: ptr(5.0), StartTime: 111},
+			&models.ProcessInfo{PID: 2, PPID: 1, ExecutablePath: "/bin/a", DiskWrite: ptr(10.0), StartTime: 222},
+		)[1]
+		assert.Nil(t, unknown.DiskRead, "known parent plus unknown child is unknown")
+		assert.Nil(t, unknown.DiskWrite, "unknown parent plus known child is unknown")
+		assert.Equal(t, int64(111), unknown.StartTime)
 	})
 
 	t.Run("network sums, caps remotes and stays exact", func(t *testing.T) {
@@ -124,7 +80,7 @@ func TestMergeProcesses_Extras(t *testing.T) {
 	})
 }
 
-func TestSortProcesses_ExtrasPutUnknownLast(t *testing.T) {
+func TestSortProcesses_IOAndNetPutUnknownLast(t *testing.T) {
 	pids := func(list []*models.ProcessInfo) []int32 {
 		out := make([]int32, len(list))
 		for i, p := range list {
@@ -135,17 +91,17 @@ func TestSortProcesses_ExtrasPutUnknownLast(t *testing.T) {
 	rows := func() []*models.ProcessInfo {
 		return []*models.ProcessInfo{
 			{PID: 1},
-			{PID: 2, GPU: ptr(10.0), VRAMKB: ptr(uint64(5)), DiskRead: ptr(1.0), DiskWrite: ptr(1.0)},
+			{PID: 2, DiskRead: ptr(1.0), DiskWrite: ptr(1.0)},
 			{PID: 3},
-			{PID: 4, GPU: ptr(0.0), VRAMKB: ptr(uint64(50)), DiskRead: ptr(0.0), DiskWrite: ptr(10.0)},
+			{PID: 4, DiskRead: ptr(0.0), DiskWrite: ptr(10.0)},
 		}
 	}
-	for sortBy, want := range map[ProcSortBy][]int32{SortByGPU: {2, 4}, SortByVRAM: {4, 2}, SortByDisk: {4, 2}} {
+	t.Run("disk sort", func(t *testing.T) {
 		list := rows()
-		sortProcesses(list, sortBy)
-		assert.Equal(t, want, pids(list)[:2], string(sortBy))
-		assert.ElementsMatch(t, []int32{1, 3}, pids(list)[2:], string(sortBy))
-	}
+		sortProcesses(list, SortByDisk)
+		assert.Equal(t, []int32{4, 2}, pids(list)[:2])
+		assert.ElementsMatch(t, []int32{1, 3}, pids(list)[2:])
+	})
 
 	list := []*models.ProcessInfo{
 		{PID: 1},

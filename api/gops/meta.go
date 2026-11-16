@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/JonasNowak/dms-gop/gops"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/duxlabs-dev/dux-go/log"
-	"github.com/duxlabs-dev/dux-gop/gops"
-	"github.com/duxlabs-dev/dux-gop/models"
 )
 
 type MetaInput struct {
@@ -18,13 +18,12 @@ type MetaInput struct {
 	MergeChildren  bool            `query:"merge_children" default:"true"`
 
 	// Module-specific parameters
-	GPUPciIds            []string `query:"gpu_pci_ids" example:"10de:2684,1002:164e" doc:"PCI IDs or bus addresses of GPUs to read for gpu, gpu-temp, process-gpu and sensors; other GPUs are not touched"`
-	GPUCursor            string   `query:"gpu_cursor" doc:"GPU cursor from previous request"`
-	CPUCursor            string   `query:"cpu_cursor" doc:"CPU cursor from previous request"`
-	ProcCursor           string   `query:"proc_cursor" doc:"Process cursor from previous request"`
-	NetRateCursor        string   `query:"net_rate_cursor" doc:"Network rate cursor from previous request"`
-	DiskRateCursor       string   `query:"disk_rate_cursor" doc:"Disk rate cursor from previous request"`
-	NetRateAllInterfaces bool     `query:"net_rate_all_interfaces" default:"false" doc:"Include all interfaces in net-rate"`
+	GPUCursor            string `query:"gpu_cursor" doc:"GPU cursor from previous request"`
+	CPUCursor            string `query:"cpu_cursor" doc:"CPU cursor from previous request"`
+	ProcCursor           string `query:"proc_cursor" doc:"Process cursor from previous request"`
+	NetRateCursor        string `query:"net_rate_cursor" doc:"Network rate cursor from previous request"`
+	DiskRateCursor       string `query:"disk_rate_cursor" doc:"Disk rate cursor from previous request"`
+	NetRateAllInterfaces bool   `query:"net_rate_all_interfaces" default:"false" doc:"Include all interfaces in net-rate"`
 }
 
 type MetaResponse struct {
@@ -49,7 +48,6 @@ func (self *HandlerGroup) Meta(ctx context.Context, input *MetaInput) (*MetaResp
 		ProcLimit:            input.Limit,
 		EnableCPU:            !input.DisableProcCPU,
 		MergeChildren:        input.MergeChildren,
-		GPUPciIds:            input.GPUPciIds,
 		GPUCursor:            input.GPUCursor,
 		CPUCursor:            input.CPUCursor,
 		ProcCursor:           input.ProcCursor,

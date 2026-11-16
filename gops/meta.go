@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/duxlabs-dev/dux-go/log"
-	"github.com/duxlabs-dev/dux-gop/models"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -20,16 +20,13 @@ var availableModules = []string{
 	"disk-rate",
 	"diskmounts",
 	"processes",
-	"process-gpu",
 	"process-io",
 	"process-net",
 	"process-members",
 	"system",
 	"hardware",
 	"gpu",
-	"gpu-temp",
 	"sensors",
-	"memory-modules",
 }
 
 func (self *GopsUtil) GetModules() (*models.ModulesInfo, error) {
@@ -39,31 +36,24 @@ func (self *GopsUtil) GetModules() (*models.ModulesInfo, error) {
 }
 
 type MetaParams struct {
-	SortBy        ProcSortBy
-	ProcLimit     int
-	EnableCPU     bool
-	MergeChildren bool
-	// GPUPciIds names GPUs by PCI ID or bus address; gpu, gpu-temp,
-	// process-gpu and sensors touch no other GPU, since any driver query can
-	// wake a suspended dGPU or keep an idle one awake.
-	GPUPciIds      []string
-	GPUCursor      string
-	CPUCursor      string
-	ProcCursor     string
-	NetRateCursor  string
-	DiskRateCursor string
-
+	SortBy               ProcSortBy
+	ProcLimit            int
+	EnableCPU            bool
+	MergeChildren        bool
+	GPUCursor            string
+	CPUCursor            string
+	ProcCursor           string
+	NetRateCursor        string
+	DiskRateCursor       string
 	NetRateAllInterfaces bool
 }
 
 // processOptions builds the process query, enabling the extras requested by
-// the process-gpu, process-io, process-net and process-members modifier modules.
+// the process-io, process-net and process-members modifier modules.
 func (p MetaParams) processOptions(modules []string) (opts ProcessOptions, modifier bool) {
-	opts = ProcessOptions{SortBy: p.SortBy, Limit: p.ProcLimit, EnableCPU: p.EnableCPU, Cursor: p.ProcCursor, MergeChildren: p.MergeChildren, GPUPciIds: p.GPUPciIds}
+	opts = ProcessOptions{SortBy: p.SortBy, Limit: p.ProcLimit, EnableCPU: p.EnableCPU, Cursor: p.ProcCursor, MergeChildren: p.MergeChildren}
 	for _, m := range modules {
 		switch strings.ToLower(m) {
-		case "process-gpu":
-			opts.GPU, modifier = true, true
 		case "process-io":
 			opts.IO, modifier = true, true
 		case "process-net":
@@ -114,7 +104,7 @@ func (self *GopsUtil) GetMeta(ctx context.Context, modules []string, params Meta
 			}
 		case "processes":
 			hasProcesses = true
-		case "process-gpu", "process-io", "process-net", "process-members":
+		case "process-io", "process-net", "process-members":
 		case "system":
 			if sys, err := self.GetSystemInfo(); err == nil {
 				meta.System = sys
@@ -123,17 +113,13 @@ func (self *GopsUtil) GetMeta(ctx context.Context, modules []string, params Meta
 			if hw, err := self.GetSystemHardware(); err == nil {
 				meta.Hardware = hw
 			}
-		case "gpu", "gpu-temp":
-			if gpu, err := self.GetGPUInfoWithStats(params.GPUPciIds, params.GPUCursor); err == nil {
+		case "gpu":
+			if gpu, err := self.GetGPUInfoWithStats(params.GPUCursor); err == nil {
 				meta.GPU = gpu
 			}
 		case "sensors":
-			if sn, err := self.GetSensors(params.GPUPciIds); err == nil {
+			if sn, err := self.GetSensors(); err == nil {
 				meta.Sensors = sn
-			}
-		case "memory-modules":
-			if mm, err := self.GetMemoryModules(); err == nil {
-				meta.MemoryModules = mm
 			}
 		default:
 			return nil, fmt.Errorf("unknown module: %s", module)
@@ -333,7 +319,7 @@ func (self *GopsUtil) loadAllModules(ctx context.Context, params MetaParams, pro
 			return ctx.Err()
 		default:
 		}
-		gpu, err := self.GetGPUInfoWithStats(params.GPUPciIds, params.GPUCursor)
+		gpu, err := self.GetGPUInfoWithStats(params.GPUCursor)
 		if err != nil {
 			log.Warn("failed to get GPU info", "error", err)
 			return nil
@@ -350,30 +336,13 @@ func (self *GopsUtil) loadAllModules(ctx context.Context, params MetaParams, pro
 			return ctx.Err()
 		default:
 		}
-		v, err := self.GetSensors(params.GPUPciIds)
+		v, err := self.GetSensors()
 		if err != nil {
 			log.Warn("failed to get sensors", "error", err)
 			return nil
 		}
 		mu.Lock()
 		meta.Sensors = v
-		mu.Unlock()
-		return nil
-	})
-
-	g.Go(func() error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-		v, err := self.GetMemoryModules()
-		if err != nil {
-			log.Warn("failed to get memory modules", "error", err)
-			return nil
-		}
-		mu.Lock()
-		meta.MemoryModules = v
 		mu.Unlock()
 		return nil
 	})

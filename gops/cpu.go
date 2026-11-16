@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/duxlabs-dev/dux-gop/models"
+	"github.com/JonasNowak/dms-gop/models"
 )
 
 type CPUTracker struct {
@@ -16,9 +16,6 @@ type CPUTracker struct {
 	cpuCount    int
 	modelCached bool
 
-	virtualization string
-
-	tempPath     string
 	tempLastRead time.Time
 	tempValue    float64
 
@@ -64,8 +61,6 @@ func (self *GopsUtil) GetCPUInfoWithCursor(cursor string) (*models.CPUInfo, erro
 	}
 
 	cpuInfo.CoreFrequencies = slices.Clone(cpuTracker.dynamic.coreMHz)
-	cpuInfo.Governor = cpuTracker.dynamic.governor
-	cpuInfo.EPP = cpuTracker.dynamic.epp
 	cpuInfo.MinFrequency = cpuTracker.static.minMHz
 	cpuInfo.MaxFrequency = cpuTracker.static.maxMHz
 	cpuInfo.PhysicalCores = cpuTracker.static.physicalCores
@@ -73,8 +68,6 @@ func (self *GopsUtil) GetCPUInfoWithCursor(cursor string) (*models.CPUInfo, erro
 		cpuInfo.Cache = new(*c)
 	}
 	cpuInfo.BaseFrequency = cpuTracker.static.baseMHz
-	cpuInfo.Sockets = cpuTracker.static.sockets
-	cpuInfo.Virtualization = cpuTracker.virtualization
 
 	cpuInfo.Count = cpuTracker.cpuCount
 	cpuInfo.Model = cpuTracker.cpuModel
@@ -169,20 +162,9 @@ func (self *GopsUtil) loadCPUStatic() {
 	if err == nil && len(info) > 0 {
 		cpuTracker.cpuModel = info[0].ModelName
 		cpuTracker.cpuFreq = info[0].Mhz
-		cpuTracker.virtualization = cpuVirtualization(info[0].Flags)
 	}
 	cpuTracker.static = readCPUStaticLive()
 	cpuTracker.modelCached = true
-}
-
-func cpuVirtualization(flags []string) string {
-	switch {
-	case slices.Contains(flags, "svm"):
-		return "AMD-V"
-	case slices.Contains(flags, "vmx"):
-		return "VT-x"
-	}
-	return ""
 }
 
 func calculateCPUPercentage(prev, curr []float64) float64 {

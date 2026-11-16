@@ -1,48 +1,59 @@
 <div align="center">
-  <a href="https://duxlabs.dev">
-    <img src="assets/danklogo.svg" alt="dgop" width="200">
+  <a href="https://github.com/JonasNowak/DankMacShell">
+    <img src="assets/danklogo.svg" alt="Dms_GOP" width="200">
   </a>
 
-  # dgop
+  # Dms_GOP
 
-  ### Stateless, cursor-based system and process monitoring
+  ### Apple Silicon macOS system monitoring CLI, Bubbletea TUI, and OpenAPI REST server
 
-[![Documentation](https://img.shields.io/badge/docs-duxlabs.dev-9ccbfb?style=for-the-badge&labelColor=101418)](https://duxlabs.dev/docs/dgop)
-[![GitHub Release](https://img.shields.io/github/v/release/duxlabs-dev/dux-gop?style=for-the-badge&labelColor=101418&color=a6da95)](https://github.com/duxlabs-dev/dux-gop/releases)
-[![Arch Linux](https://img.shields.io/archlinux/v/extra/x86_64/dux-gop?style=for-the-badge&labelColor=101418&color=f5a97f)](https://archlinux.org/packages/extra/x86_64/dux-gop/)
-[![GitHub License](https://img.shields.io/github/license/duxlabs-dev/dux-gop?style=for-the-badge&labelColor=101418&color=b9c8da)](https://github.com/duxlabs-dev/dux-gop/blob/master/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/JonasNowak/dms-gop?style=for-the-badge&labelColor=101418&color=a6da95)](https://github.com/JonasNowak/dms-gop/releases)
+[![GitHub License](https://img.shields.io/github/license/JonasNowak/dms-gop?style=for-the-badge&labelColor=101418&color=b9c8da)](https://github.com/JonasNowak/dms-gop/blob/master/LICENSE)
 
 </div>
 
 ---
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/eb0b4e3e-e6ed-439d-a24b-640d15938510" width="600" alt="dgop screenshot" />
+<img src="https://github.com/user-attachments/assets/eb0b4e3e-e6ed-439d-a24b-640d15938510" width="600" alt="dms-gop screenshot" />
 </div>
 
-System monitoring tool with CLI and REST API built in Go. Fast, single binary, JSON output, OpenAPI spec.
+System monitoring tool with CLI, Bubbletea TUI, and REST API built in Go. Fast, single binary, JSON output, OpenAPI spec.
 
-Use standalone for system monitoring, or as a companion for [Dux Shell](https://github.com/duxlabs-dev/dux-shell) to unlock system information widgets.
-
-**[Full documentation →](https://duxlabs.dev/docs/dgop)**
+Use standalone for system monitoring, or as a companion for [DankMacShell](https://github.com/JonasNowak/DankMacShell) to unlock system information widgets. Themed dynamically via [dank-theme-engine](https://github.com/JonasNowak/dank-theme-engine).
 
 ---
 
 ## Installation
 
-### Latest Release
-Download the latest binary from [GitHub Releases](https://github.com/duxlabs-dev/dux-gop/releases/latest)
+### Nix Flake
 
-### Arch Linux
-
+Run directly with:
 ```bash
-# Using pacman
-sudo pacman -S dgop
+nix run github:JonasNowak/dms-gop
+```
+
+Or add to your Nix configuration:
+
+**nix-darwin:**
+```nix
+{
+  imports = [ inputs.dms-gop.darwinModules.default ];
+  programs.dms-gop.enable = true;
+}
+```
+
+**Home Manager:**
+```nix
+{
+  imports = [ inputs.dms-gop.homeManagerModules.default ];
+  programs.dms-gop.enable = true;
+}
 ```
 
 ### Go Install
 ```bash
-go install github.com/duxlabs-dev/dux-gop/cmd/dgop@master
+go install github.com/JonasNowak/dms-gop/cmd/dms-gop@master
 ```
 
 ### Build from Source
@@ -50,57 +61,52 @@ go install github.com/duxlabs-dev/dux-gop/cmd/dgop@master
 # Build it
 make
 
-# Install system-wide
-sudo make install
+# Install to ~/.local/bin (with dgop alias symlink)
+make && make install
 
 # Or just run locally
-go run ./cmd/dgop [command]
+go run ./cmd/dms-gop [command]
 ```
 
 ## Basic Commands
 
+The binary is `dms-gop`, with a `dgop` alias symlink created on install.
+
 ```bash
 # See all at once
+dms-gop all
+# or
 dgop all
 
 # Just CPU info
-dgop cpu
+dms-gop cpu
 
 # Memory usage
-dgop memory
+dms-gop memory
 
 # Network interfaces
-dgop network
+dms-gop network
 
 # Disk usage and mounts
-dgop disk
+dms-gop disk
 
 # Running processes (sorted by CPU usage)
-dgop processes
+dms-gop processes
 
 # System load and uptime
-dgop system
+dms-gop system
 
-# Hardware info (BIOS, motherboard, etc)
-dgop hardware
+# Hardware info
+dms-gop hardware
 
-# GPU information
-dgop gpu
+# GPU information (Apple Silicon GPU model; live utilization/power in Scope 2)
+dms-gop gpu
 
-# Get temperature for specific GPU
-dgop gpu-temp --pci-id 10de:2684
-
-# Temperature, fan and power sensors; a GPU's only when named
-dgop sensors --gpu-pci-ids 10de:2684
-
-# Installed memory modules
-dgop memory-modules
-
-# Lifetime I/O, swap, open files and systemd unit of one process
-dgop process --pid 1234
+# Lifetime I/O, open files, launchd label and bundle ID of one process
+dms-gop process --pid 1234
 
 # List available modules
-dgop modules
+dms-gop modules
 ```
 
 ## Meta Command
@@ -109,22 +115,13 @@ Mix and match any modules you want:
 
 ```bash
 # Just CPU and memory
-dgop meta --modules cpu,memory
+dms-gop meta --modules cpu,memory
 
 # Everything except processes
-dgop meta --modules cpu,memory,network,disk,system,hardware,gpu
+dms-gop meta --modules cpu,memory,network,disk,system,hardware,gpu
 
-# GPU with temperatures
-dgop meta --modules gpu --gpu-pci-ids 10de:2684
-
-# Multiple GPU temperatures
-dgop meta --modules gpu --gpu-pci-ids 10de:2684,1002:164e
-
-# Live GPU usage, VRAM, clocks, power and fans, picked by bus address
-dgop meta --modules gpu --gpu-pci-ids 0000:03:00.0
-
-# Everything (same as 'dgop all')
-dgop meta --modules all
+# Everything (same as 'dms-gop all')
+dms-gop meta --modules all
 ```
 
 ## JSON Output
@@ -132,33 +129,33 @@ dgop meta --modules all
 Add `--json` to any command:
 
 ```bash
-dgop cpu --json
-dgop meta --modules gpu,memory --json
+dms-gop cpu --json
+dms-gop meta --modules gpu,memory --json
 ```
 
 ## Process Options
 
 ```bash
 # Sort by memory instead of CPU
-dgop processes --sort memory
+dms-gop processes --sort memory
 
 # Limit to top 10
-dgop processes --limit 10
+dms-gop processes --limit 10
 
 # Skip CPU calculation for faster results
-dgop processes --no-cpu
+dms-gop processes --no-cpu
 
-# Add per-process GPU and VRAM (of the named GPUs), disk I/O, or connections and TCP rates
-dgop processes --gpu --gpu-pci-ids 10de:2684 --io --net
+# Add per-process disk I/O, or connections and TCP rates
+dms-gop processes --io --net
 
 # List the processes behind each merged row (JSON output)
-dgop processes --members --json
+dms-gop processes --members --json
 
 # Combine options
-dgop meta --modules processes --sort memory --limit 20 --no-cpu
+dms-gop meta --modules processes --sort memory --limit 20 --no-cpu
 
 # Per-process extras in meta
-dgop meta --modules processes,process-gpu,process-io,process-net,process-members --gpu-pci-ids 10de:2684 --sort disk
+dms-gop meta --modules processes,process-io,process-net,process-members --sort disk
 ```
 
 ## API Server
@@ -166,40 +163,36 @@ dgop meta --modules processes,process-gpu,process-io,process-net,process-members
 Start the REST API:
 
 ```bash
-dgop server
+dms-gop server
 ```
 
 Then hit these endpoints:
 
+- **GET** `/gops/all` - All metrics combined
 - **GET** `/gops/cpu` - CPU info
-- **GET** `/gops/memory` - Memory usage  
+- **GET** `/gops/memory` - Memory usage
 - **GET** `/gops/network` - Network interfaces
 - **GET** `/gops/disk` - Disk usage
+- **GET** `/gops/disk/mounts` - Disk mount points
 - **GET** `/gops/processes?sort_by=memory&limit=10` - Top 10 processes by memory
-- **GET** `/gops/processes?gpu=true&io=true&net=true` - Processes with GPU, disk I/O and network
-- **GET** `/gops/process/1234` - Details of one process
+- **GET** `/gops/processes?io=true&net=true` - Processes with disk I/O and network
+- **GET** `/gops/process/{pid}` - Details of one process
 - **GET** `/gops/system` - System load and uptime
 - **GET** `/gops/hardware` - Hardware info
 - **GET** `/gops/gpu` - GPU information
-- **GET** `/gops/gpu/temp?pciId=10de:2684` - GPU temperature
-- **GET** `/gops/sensors?gpu_pci_ids=10de:2684` - Temperature, fan and power sensors
-- **GET** `/gops/memory/modules` - Installed memory modules
-- **GET** `/gops/net-rate?all_interfaces=true` - Network rates of every interface
+- **GET** `/gops/sensors` - Temperature, fan and power sensors
+- **GET** `/gops/net-rate?interface=en0&all_interfaces=true` - Network rates
+- **GET** `/gops/disk-rate` - Disk I/O rates
+- **GET** `/gops/meta?modules=cpu,memory` - Dynamic modules
 - **GET** `/gops/modules` - List available modules
-- **GET** `/gops/meta?modules=cpu,memory&gpu_pci_ids=10de:2684` - Dynamic modules
 
 API docs: http://localhost:63484/docs
 
 ## Examples
 
-### Get GPU temps for both your cards
-```bash
-dgop meta --modules gpu --gpu-pci-ids 10de:2684,1002:164e
-```
-
 ### Monitor system without slow CPU calculations
 ```bash
-dgop meta --modules cpu,memory,network --no-cpu
+dms-gop meta --modules cpu,memory,network --no-cpu
 ```
 
 ### API: Get CPU and memory as JSON
@@ -207,14 +200,14 @@ dgop meta --modules cpu,memory,network --no-cpu
 curl http://localhost:63484/gops/meta?modules=cpu,memory
 ```
 
-### API: Get GPU with temperature
+### API: Get all metrics
 ```bash
-curl "http://localhost:63484/gops/meta?modules=gpu&gpu_pci_ids=10de:2684"
+curl http://localhost:63484/gops/all
 ```
 
 ## Real-time Monitoring with Cursors
 
-dgop supports cursor-based sampling for building real-time monitoring tools like htop. Instead of relying on instantaneous snapshots, you can track system state changes over time for more accurate CPU usage calculations and network/disk rates.
+dms-gop supports cursor-based sampling for building real-time monitoring tools. Instead of relying on instantaneous snapshots, you can track system state changes over time for more accurate CPU usage calculations and network/disk rates.
 
 The cursor system works by:
 - Taking an initial measurement that establishes baseline metrics and timestamps
@@ -227,12 +220,12 @@ This approach accounts for the actual time elapsed between measurements, making 
 
 ```bash
 # First call - establishes baseline and returns cursor
-dgop cpu --json
+dms-gop cpu --json
 # Returns: {"usage":1.68, ..., "cursor":"eyJ0b3RhbCI6WzE2MjMwLjAzLDUuOTUsNTEyMy4yNV0..."}
 
 # Wait a few seconds, then use cursor for accurate CPU calculations
 sleep 3
-dgop cpu --json --cursor "eyJ0b3RhbCI6WzE2MjMwLjAzLDUuOTUsNTEyMy4yNV0..."
+dms-gop cpu --json --cursor "eyJ0b3RhbCI6WzE2MjMwLjAzLDUuOTUsNTEyMy4yNV0..."
 # Returns more accurate usage percentages based on time delta
 ```
 
@@ -240,54 +233,64 @@ dgop cpu --json --cursor "eyJ0b3RhbCI6WzE2MjMwLjAzLDUuOTUsNTEyMy4yNV0..."
 
 ```bash
 # First call - establishes process baseline
-dgop processes --json --limit 5
+dms-gop processes --json --limit 5
 # Returns: {"processes":[...], "cursor":"W3sicGlkIjoyODE2NTYsInRpY2tzIjozOS43Mix9XQ..."}
 
 # Use cursor for accurate per-process CPU calculations
 sleep 2
-dgop processes --json --limit 5 --cursor "W3sicGlkIjoyODE2NTYsInRpY2tzIjozOS43Mix9XQ..."
+dms-gop processes --json --limit 5 --cursor "W3sicGlkIjoyODE2NTYsInRpY2tzIjozOS43Mix9XQ..."
 ```
 
 ### Network Rate Monitoring
 
 ```bash
 # First call - establishes network baseline
-dgop net-rate --json
+dms-gop net-rate --json
 # Returns: {"interfaces":[...], "cursor":"eyJ0aW1lc3RhbXAiOiIyMDI1LTA4LTExVDE2OjE1OjM1..."}
 
 # Get real-time transfer rates
 sleep 3
-dgop net-rate --json --cursor "eyJ0aW1lc3RhbXAiOiIyMDI1LTA4LTExVDE2OjE1OjM1..."
-# Returns: {"interfaces":[{"interface":"wlp99s0","rxrate":67771,"txrate":16994}]}
+dms-gop net-rate --json --cursor "eyJ0aW1lc3RhbXAiOiIyMDI1LTA4LTExVDE2OjE1OjM1..."
+# Returns: {"interfaces":[{"interface":"en0","rxrate":67771,"txrate":16994}]}
 
-# Include VPN and virtual interfaces
-dgop net-rate --json --all-interfaces
+# Include all interfaces
+dms-gop net-rate --json --all-interfaces
 ```
 
 ### Disk I/O Rate Monitoring
 
 ```bash
 # Establish disk I/O baseline
-dgop disk-rate --json
+dms-gop disk-rate --json
 # Returns cursor for disk rate calculations
 
 # Get real-time disk I/O rates
 sleep 2
-dgop disk-rate --json --cursor "eyJ0aW1lc3RhbXAiOiIyMDI1LTA4LTExVDE2OjE2..."
+dms-gop disk-rate --json --cursor "eyJ0aW1lc3RhbXAiOiIyMDI1LTA4LTExVDE2OjE2..."
 ```
 
 ### Combined Monitoring with Meta Command
 
 ```bash
 # Monitor CPU, processes, and network rates together
-dgop meta --modules cpu,processes,net-rate --json --limit 10
+dms-gop meta --modules cpu,processes,net-rate --json --limit 10
 
 # Use multiple cursors for comprehensive monitoring
-dgop meta --modules cpu,processes,net-rate --json --limit 10 \
+dms-gop meta --modules cpu,processes,net-rate --json --limit 10 \
   --cpu-cursor "eyJ0b3RhbCI6WzE2MjMwLjAz..." \
   --proc-cursor "W3sicGlkIjoyODE2NTYsInRpY2tzIjo..." \
   --net-rate-cursor "eyJ0aW1lc3RhbXAiOiIyMDI1LTA4LTEx..."
 ```
+
+## Theming (dank-theme-engine Integration)
+
+dms-gop integrates with [dank-theme-engine](https://github.com/JonasNowak/dank-theme-engine) for dynamic theming with the following precedence (`theme.json` > `colors.json` > default):
+
+1. **dank-theme-engine (`theme.json`)**: Watches `~/Library/Application Support/DMS/theme.json` (or a custom path via `DMS_THEME_JSON`) for changes and applies the palette automatically
+2. **Legacy local fallback (`colors.json`)**: Uses `~/.config/dms-gop/colors.json` when no valid `theme.json` is present
+3. **Built-in defaults**: Falls back cleanly if neither file is present or valid
+
+Theme and keybind watching use `fsnotify` on the parent directories to detect atomic writes and live changes in real time.
 
 ## Development
 
@@ -302,7 +305,7 @@ make test
 make fmt
 
 # Build and install
-make && sudo make install
+make && make install
 
 # Clean build artifacts
 make clean
@@ -310,12 +313,11 @@ make clean
 
 ## Requirements
 
-- Go 1.22+
-- Linux (uses `/proc`, `/sys`, and system commands)
-- Optional: `nvidia-smi` for NVIDIA GPU temperatures
+- Go 1.27+ (or use the Nix flake)
+- macOS on Apple Silicon (`aarch64-darwin`)
 
 ## Why Another Monitoring Tool?
 
-Because nothing did what i wanted, i didnt want to run a metrics server, I wanted GO because its fast and compiles to a single binary, bash scripts got too messy.
+Because nothing did what I wanted: no metrics server required, Go for speed and single-binary deployment, cleaner than bash scripts.
 
-TL;DR single binary cli and server with json output, openapi spec, and a bunch of data.
+TL;DR: single binary CLI and server with JSON output, OpenAPI spec, and comprehensive system data.

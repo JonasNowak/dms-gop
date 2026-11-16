@@ -1,8 +1,8 @@
 package models
 
 type Sensor struct {
-	Chip     string   `json:"chip" doc:"hwmon chip name, e.g. k10temp."`
-	Device   string   `json:"device" doc:"Basename of the hwmon device link (nvme0, 0000:0c:00.0, 10-001a); empty if none."`
+	Chip     string   `json:"chip" doc:"Sensor source, e.g. an IOHID/SMC device name."`
+	Device   string   `json:"device" doc:"Basename of the sensor device; empty if none."`
 	Label    string   `json:"label"`
 	Kind     string   `json:"kind" doc:"temperature, fan or power."`
 	Value    float64  `json:"value" doc:"Degrees Celsius, rpm or watts depending on kind."`

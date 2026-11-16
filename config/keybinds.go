@@ -3,18 +3,18 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/duxlabs-dev/dux-gop/models"
-	"github.com/fsnotify/fsnotify"
+	"github.com/JonasNowak/dms-gop/models"
 )
 
 type KeybindManager struct {
 	mu       sync.RWMutex
 	binds    models.Keybinds
-	watcher  *fsnotify.Watcher
+	watcher  io.Closer
 	filePath string
 	notify   chan struct{}
 }
@@ -25,9 +25,14 @@ func NewKeybindManager() (*KeybindManager, error) {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
+	return NewKeybindManagerWithPath(filepath.Join(configDir, "keybinds.json"))
+}
+
+// NewKeybindManagerWithPath initializes a KeybindManager backed by filePath.
+func NewKeybindManagerWithPath(filePath string) (*KeybindManager, error) {
 	km := &KeybindManager{
 		binds:    models.DefaultKeybinds(),
-		filePath: filepath.Join(configDir, "keybinds.json"),
+		filePath: filePath,
 		notify:   make(chan struct{}, 1),
 	}
 
@@ -128,40 +133,26 @@ func (km *KeybindManager) loadConfigFile() error {
 	km.binds = binds
 	km.mu.Unlock()
 
-	km.notifyChange()
 	return nil
 }
 
+// reload reloads keybinds from disk, falling back to defaults on error, and notifies listeners.
+func (km *KeybindManager) reload() {
+	if err := km.loadConfigFile(); err != nil {
+		km.mu.Lock()
+		km.binds = models.DefaultKeybinds()
+		km.mu.Unlock()
+	}
+	km.notifyChange()
+}
+
+// startWatching sets up file watching using the shared watchConfigFiles helper.
 func (km *KeybindManager) startWatching() error {
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := watchConfigFiles([]string{km.filePath}, km.reload)
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
 	}
 
 	km.watcher = watcher
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				if event.Has(fsnotify.Write) && event.Name == km.filePath {
-					if err := km.loadConfigFile(); err != nil {
-						km.mu.Lock()
-						km.binds = models.DefaultKeybinds()
-						km.mu.Unlock()
-						km.notifyChange()
-					}
-				}
-			case _, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-			}
-		}
-	}()
-
-	return watcher.Add(km.filePath)
+	return nil
 }

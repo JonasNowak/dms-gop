@@ -16,6 +16,8 @@ func isVirtualMount(path string) bool {
 	switch {
 	case strings.HasPrefix(path, "/dev/"):
 		return true
+	case path == "/proc", path == "/sys", path == "/run":
+		return true
 	}
 	return false
 }
@@ -23,7 +25,5 @@ func isVirtualMount(path string) bool {
 func matchesDiskDevice(name string) bool {
 	return strings.HasPrefix(name, "disk")
 }
-
-const diskBusySupported = false
 
 const processIOSupported = true

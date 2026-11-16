@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/duxlabs-dev/dux-gop/models"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/shirou/gopsutil/v4/net"
 )
 

@@ -9,12 +9,12 @@ import (
 	"net/url"
 	"testing"
 
+	gops_handler "github.com/JonasNowak/dms-gop/api/gops"
+	"github.com/JonasNowak/dms-gop/api/server"
+	"github.com/JonasNowak/dms-gop/gops"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
-	gops_handler "github.com/duxlabs-dev/dux-gop/api/gops"
-	"github.com/duxlabs-dev/dux-gop/api/server"
-	"github.com/duxlabs-dev/dux-gop/gops"
-	"github.com/duxlabs-dev/dux-gop/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,10 +23,9 @@ import (
 // nil embedded Collector and panics.
 type fakeCollector struct {
 	server.Collector
-	meta    func(modules []string, params gops.MetaParams) (*models.MetaInfo, error)
-	procs   func(opts gops.ProcessOptions) (*models.ProcessListResponse, error)
-	detail  func(pid int32) (*models.ProcessDetail, error)
-	modules func() (*models.MemoryModulesInfo, error)
+	meta   func(modules []string, params gops.MetaParams) (*models.MetaInfo, error)
+	procs  func(opts gops.ProcessOptions) (*models.ProcessListResponse, error)
+	detail func(pid int32) (*models.ProcessDetail, error)
 }
 
 func (self *fakeCollector) GetMeta(_ context.Context, modules []string, params gops.MetaParams) (*models.MetaInfo, error) {
@@ -41,11 +40,7 @@ func (self *fakeCollector) GetProcessDetail(pid int32) (*models.ProcessDetail, e
 	return self.detail(pid)
 }
 
-func (self *fakeCollector) GetMemoryModules() (*models.MemoryModulesInfo, error) {
-	return self.modules()
-}
-
-func (self *fakeCollector) GetSensors([]string) (*models.SensorsInfo, error) {
+func (self *fakeCollector) GetSensors() (*models.SensorsInfo, error) {
 	return &models.SensorsInfo{Sensors: []models.Sensor{}}, nil
 }
 
@@ -70,7 +65,6 @@ func TestMetaPassesModulesAndParams(t *testing.T) {
 	q := url.Values{}
 	q.Set("modules", "processes, process-io")
 	q.Set("proc_cursor", "prev")
-	q.Set("gpu_pci_ids", "10de:2684")
 	q.Set("disable_proc_cpu", "true")
 	q.Set("limit", "5")
 	q.Set("net_rate_all_interfaces", "true")
@@ -80,7 +74,7 @@ func TestMetaPassesModulesAndParams(t *testing.T) {
 	assert.Equal(t, []string{"processes", "process-io"}, gotModules, "a comma list is split and trimmed")
 	assert.Equal(t, gops.MetaParams{
 		SortBy: gops.SortByCPU, ProcLimit: 5, MergeChildren: true,
-		GPUPciIds: []string{"10de:2684"}, ProcCursor: "prev", NetRateAllInterfaces: true,
+		ProcCursor: "prev", NetRateAllInterfaces: true,
 	}, gotParams)
 }
 
@@ -98,8 +92,8 @@ func TestProcessesPassesOptions(t *testing.T) {
 		got = opts
 		return &models.ProcessListResponse{Processes: []*models.ProcessInfo{{PID: 7}}, Cursor: "c2"}, nil
 	}}
-	body := getJSON(t, c, "/gops/processes?gpu=true&io=true&net=true&cursor=c1&disable_proc_cpu=true&limit=3&merge_children=false", http.StatusOK)
-	assert.Equal(t, gops.ProcessOptions{SortBy: gops.SortByCPU, Limit: 3, Cursor: "c1", GPU: true, IO: true, Net: true}, got)
+	body := getJSON(t, c, "/gops/processes?io=true&net=true&cursor=c1&disable_proc_cpu=true&limit=3&merge_children=false", http.StatusOK)
+	assert.Equal(t, gops.ProcessOptions{SortBy: gops.SortByCPU, Limit: 3, Cursor: "c1", IO: true, Net: true}, got)
 	assert.Equal(t, "c2", body["cursor"])
 	assert.Len(t, body["data"], 1)
 }
@@ -126,14 +120,7 @@ func TestProcessDetailStatuses(t *testing.T) {
 	}
 }
 
-func TestMemoryModulesAndSensors(t *testing.T) {
-	c := &fakeCollector{modules: func() (*models.MemoryModulesInfo, error) {
-		return &models.MemoryModulesInfo{Slots: 4, Modules: []models.MemoryModule{}}, nil
-	}}
-	assert.Contains(t, getJSON(t, c, "/gops/memory/modules", http.StatusOK), "modules")
+func TestSensors(t *testing.T) {
+	c := &fakeCollector{}
 	assert.Contains(t, getJSON(t, c, "/gops/sensors", http.StatusOK), "sensors")
-
-	c.modules = func() (*models.MemoryModulesInfo, error) { return nil, errors.New("memory modules: no source") }
-	body := getJSON(t, c, "/gops/memory/modules", http.StatusInternalServerError)
-	assert.Equal(t, "Unable to retrieve memory modules", body["detail"])
 }

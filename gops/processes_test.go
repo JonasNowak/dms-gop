@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duxlabs-dev/dux-gop/models"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -227,7 +227,7 @@ func TestLegacyProcessCursorHasNoExtras(t *testing.T) {
 	procs, net := decodeCursor(legacyProcCursor)
 	assert.Len(t, procs, 2)
 	for pid, p := range procs {
-		assert.False(t, p.ioOK || p.gpuOK, "extras on %d", pid)
+		assert.False(t, p.ioOK, "extras on %d", pid)
 		assert.Zero(t, p.start, "start on %d", pid)
 	}
 	assert.Zero(t, net.at)

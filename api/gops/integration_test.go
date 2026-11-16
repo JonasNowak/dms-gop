@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration && darwin
 
 // End-to-end checks against the live host: go test -tags integration ./...
 package gops_handler_test
@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	gops_handler "github.com/JonasNowak/dms-gop/api/gops"
+	"github.com/JonasNowak/dms-gop/api/server"
+	"github.com/JonasNowak/dms-gop/gops"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
-	gops_handler "github.com/duxlabs-dev/dux-gop/api/gops"
-	"github.com/duxlabs-dev/dux-gop/api/server"
-	"github.com/duxlabs-dev/dux-gop/gops"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,11 +58,8 @@ func rowFor(t *testing.T, rows []any) map[string]any {
 
 func TestIntegrationEndpoints(t *testing.T) {
 	assert.Contains(t, liveJSON(t, "/gops/sensors", http.StatusOK), "sensors")
-	if _, err := gops.NewGopsUtil().GetMemoryModules(); err == nil {
-		assert.Contains(t, liveJSON(t, "/gops/memory/modules", http.StatusOK), "modules")
-	}
 	liveJSON(t, "/gops/net-rate?all_interfaces=true", http.StatusOK)
-	liveJSON(t, "/gops/meta?modules=sensors,gpu,memory-modules&gpu_cursor=not-a-cursor&net_rate_all_interfaces=true", http.StatusOK)
+	liveJSON(t, "/gops/meta?modules=sensors,gpu&net_rate_all_interfaces=true", http.StatusOK)
 	liveJSON(t, "/gops/process/2147483647", http.StatusNotFound)
 
 	pid := liveJSON(t, fmt.Sprintf("/gops/process/%d", os.Getpid()), http.StatusOK)["pid"]
@@ -70,21 +67,18 @@ func TestIntegrationEndpoints(t *testing.T) {
 }
 
 func TestIntegrationProcessJourney(t *testing.T) {
-	if _, err := os.ReadFile("/proc/self/io"); err != nil {
-		t.Skipf("/proc/self/io unreadable: %v", err)
-	}
-	const path = "/gops/meta?modules=processes,process-gpu,process-io&limit=0&disable_proc_cpu=true"
+	const path = "/gops/meta?modules=processes,process-io&limit=0&disable_proc_cpu=true"
 
 	first := liveJSON(t, path, http.StatusOK)
 	cursor, _ := first["cursor"].(string)
 	require.NotEmpty(t, cursor)
-	for _, k := range []string{"diskRead", "diskWrite", "gpu"} {
+	for _, k := range []string{"diskRead", "diskWrite"} {
 		assert.NotNil(t, rowFor(t, list(first["processes"]))[k], "first call lacks %q", k)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 	second := liveJSON(t, path+"&proc_cursor="+url.QueryEscape(cursor), http.StatusOK)
-	for _, k := range []string{"diskRead", "diskWrite", "gpu"} {
+	for _, k := range []string{"diskRead", "diskWrite"} {
 		assert.NotNil(t, rowFor(t, list(second["processes"]))[k], "second call lacks %q", k)
 	}
 }

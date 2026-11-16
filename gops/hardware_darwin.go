@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duxlabs-dev/dux-gop/models"
+	"github.com/JonasNowak/dms-gop/models"
 )
 
 func getBIOSInfo() models.BIOSInfo {
@@ -53,9 +53,8 @@ func detectGPUEntries() ([]gpuEntry, error) {
 		gpuName := strings.TrimSpace(strings.TrimPrefix(trimmed, "Chipset Model:"))
 		vendor := inferVendor("", gpuName)
 		entries = append(entries, gpuEntry{
-			Priority: 1,
-			Vendor:   vendor,
-			RawLine:  gpuName,
+			Vendor: vendor,
+			Model:  removeVendorPrefixes(gpuName),
 		})
 	}
 	return entries, nil
@@ -64,7 +63,9 @@ func detectGPUEntries() ([]gpuEntry, error) {
 func sampleGPUs(entries []gpuEntry, _ gpuCursor, now time.Time) ([]gpuSample, gpuCursor) {
 	samples := make([]gpuSample, len(entries))
 	for i := range samples {
-		samples[i].Hwmon = "unknown"
+		samples[i] = gpuSample{
+			Driver: entries[i].Driver,
+		}
 	}
 	return samples, newGPUCursor(now)
 }

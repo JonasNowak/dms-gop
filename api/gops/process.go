@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/JonasNowak/dms-gop/gops"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/duxlabs-dev/dux-gop/gops"
-	"github.com/duxlabs-dev/dux-gop/models"
 )
 
 type ProcessDetailInput struct {

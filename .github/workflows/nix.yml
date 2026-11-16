@@ -1,67 +1,35 @@
-name: Update Vendor Hash
+name: Nix CI
 
 on:
-  workflow_dispatch:
   push:
-    paths:
-      - "go.mod"
-      - "go.sum"
     branches:
-      - master
-      - "stable-*"
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+concurrency:
+  group: nix-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  update-vendor-hash:
-    runs-on: ubuntu-latest
+  flake-check:
+    name: nix flake check + build
+    runs-on: macos-latest # arm64 (Apple Silicon, aarch64-darwin)
     steps:
-      - name: Create GitHub App token
-        id: app_token
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ steps.app_token.outputs.token }}
+        uses: actions/checkout@v4
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
 
-      - name: Update vendorHash in flake.nix
-        run: |
-          set -euo pipefail
-          echo "Attempting nix build to get new vendorHash..."
-          if output=$(nix build .#dgop 2>&1); then
-            echo "Build succeeded, no hash update needed"
-            exit 0
-          fi
-          new_hash=$(echo "$output" | grep -oP "got:\s+\K\S+" | head -n1 || true)
-          [ -n "$new_hash" ] || { echo "Could not extract new vendorHash"; echo "$output"; exit 1; }
-          current_hash=$(grep -oP 'vendorHash = "\K[^"]+' flake.nix)
-          [ "$current_hash" = "$new_hash" ] && { echo "vendorHash already up to date"; exit 0; }
-          sed -i "s|vendorHash = \"$current_hash\"|vendorHash = \"$new_hash\"|" flake.nix
-          echo "Verifying build with new vendorHash..."
-          nix build .#dgop
-          echo "vendorHash updated successfully!"
+      - name: Check flake (syntax + module options)
+        run: nix flake check
 
-      - name: Commit and push vendorHash update
-        env:
-          GH_TOKEN: ${{ steps.app_token.outputs.token }}
-        run: |
-          set -euo pipefail
-          if ! git diff --quiet flake.nix; then
-            git config user.name "dux-ci[bot]"
-            git config user.email "344434142+dux-ci[bot]@users.noreply.github.com"
-            git add flake.nix
-            git commit -m "nix: update vendorHash for go.mod changes" || exit 0
-            git pull --rebase origin ${{ github.ref_name }}
-            git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
-          else
-            echo "No changes to flake.nix"
-          fi
+      - name: Build dms-gop package
+        run: nix build .#dms-gop

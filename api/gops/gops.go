@@ -3,8 +3,8 @@ package gops_handler
 import (
 	"net/http"
 
+	"github.com/JonasNowak/dms-gop/api/server"
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/duxlabs-dev/dux-gop/api/server"
 )
 
 type HandlerGroup struct {
@@ -141,7 +141,7 @@ func RegisterHandlers(server *server.Server, grp *huma.Group) {
 		huma.Operation{
 			OperationID: "hardware",
 			Summary:     "Get Hardware Info",
-			Description: "Get system hardware information including BIOS, motherboard, and CPU",
+			Description: "Get system hardware information including CPU",
 			Path:        "/hardware",
 			Method:      http.MethodGet,
 		},
@@ -163,18 +163,6 @@ func RegisterHandlers(server *server.Server, grp *huma.Group) {
 	huma.Register(
 		grp,
 		huma.Operation{
-			OperationID: "gpu-temp",
-			Summary:     "Get GPU Temperature",
-			Description: "Get temperature for a specific GPU by PCI ID",
-			Path:        "/gpu/temp",
-			Method:      http.MethodGet,
-		},
-		handlers.GPUTemp,
-	)
-
-	huma.Register(
-		grp,
-		huma.Operation{
 			OperationID: "sensors",
 			Summary:     "Get Sensors",
 			Description: "Get hardware sensor readings",
@@ -189,23 +177,11 @@ func RegisterHandlers(server *server.Server, grp *huma.Group) {
 		huma.Operation{
 			OperationID: "process-detail",
 			Summary:     "Get Process Detail",
-			Description: "Get the on-demand details of one process: lifetime I/O, swap, open files, systemd unit and terminal",
+			Description: "Get the on-demand details of one process: lifetime I/O, swap, open files, launchd label, bundle ID and terminal",
 			Path:        "/process/{pid}",
 			Method:      http.MethodGet,
 		},
 		handlers.ProcessDetail,
-	)
-
-	huma.Register(
-		grp,
-		huma.Operation{
-			OperationID: "memory-modules",
-			Summary:     "Get Memory Modules",
-			Description: "Get information about the installed memory modules",
-			Path:        "/memory/modules",
-			Method:      http.MethodGet,
-		},
-		handlers.MemoryModules,
 	)
 
 	huma.Register(

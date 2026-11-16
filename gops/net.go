@@ -1,6 +1,6 @@
 package gops
 
-import "github.com/duxlabs-dev/dux-gop/models"
+import "github.com/JonasNowak/dms-gop/models"
 
 func (self *GopsUtil) GetNetworkInfo() ([]*models.NetworkInfo, error) {
 	netIO, err := self.netProvider.IOCounters(true)

@@ -2,10 +2,16 @@
 
 ## Setup
 
-Enable the pre-commit hook:
+Enable the pre-commit hook using prek:
 
 ```bash
-git config core.hooksPath .githooks
+prek install
+```
+
+Or run checks manually on all files:
+
+```bash
+prek run --all-files
 ```
 
 Install golangci-lint:

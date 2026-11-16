@@ -3,10 +3,10 @@ package gops_handler
 import (
 	"context"
 
+	"github.com/JonasNowak/dms-gop/gops"
+	"github.com/JonasNowak/dms-gop/models"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/duxlabs-dev/dux-go/log"
-	"github.com/duxlabs-dev/dux-gop/gops"
-	"github.com/duxlabs-dev/dux-gop/models"
 )
 
 type ProcessInput struct {
@@ -15,11 +15,9 @@ type ProcessInput struct {
 	DisableProcCPU bool            `query:"disable_proc_cpu" default:"false"`
 	Cursor         string          `query:"cursor" required:"false"`
 	MergeChildren  bool            `query:"merge_children" default:"true"`
-	GPU            bool            `query:"gpu" default:"false"`
 	IO             bool            `query:"io" default:"false"`
 	Net            bool            `query:"net" default:"false"`
 	Members        bool            `query:"members" default:"false" doc:"With merge_children, list each merged row's processes in children"`
-	GPUPciIds      []string        `query:"gpu_pci_ids" example:"10de:2684" doc:"With gpu, the GPUs to read; other GPUs are not touched"`
 }
 
 type ProcessResponse struct {
@@ -35,7 +33,7 @@ func (self *HandlerGroup) Processes(ctx context.Context, input *ProcessInput) (*
 
 	result, err := self.srv.Gops.GetProcessesWithOptions(gops.ProcessOptions{
 		SortBy: input.SortBy, Limit: input.Limit, EnableCPU: enableCPU, Cursor: input.Cursor,
-		MergeChildren: input.MergeChildren, GPU: input.GPU, GPUPciIds: input.GPUPciIds, IO: input.IO, Net: input.Net, Members: input.Members,
+		MergeChildren: input.MergeChildren, IO: input.IO, Net: input.Net, Members: input.Members,
 	})
 	if err != nil {
 		log.Error("Error getting process info")

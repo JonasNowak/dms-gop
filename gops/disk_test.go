@@ -3,7 +3,7 @@ package gops
 import (
 	"testing"
 
-	"github.com/duxlabs-dev/dux-gop/gops/mocks"
+	"github.com/JonasNowak/dms-gop/gops/mocks"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,10 +64,10 @@ func TestGetDiskMountsDedupesSharedDevice(t *testing.T) {
 	mockDisk := mocks.NewMockDiskInfoProvider(t)
 
 	mockDisk.EXPECT().Partitions(true).Return([]disk.PartitionStat{
-		{Device: "/dev/nvme0n1p3", Mountpoint: "/", Fstype: "btrfs", Opts: []string{"rw", "subvol=/root"}},
-		{Device: "/dev/nvme0n1p3", Mountpoint: "/home", Fstype: "btrfs", Opts: []string{"rw", "subvol=/home"}},
-		{Device: "/dev/nvme0n1p1", Mountpoint: "/boot", Fstype: "vfat", Opts: []string{"rw"}},
-		{Device: "proc", Mountpoint: "/proc", Fstype: "proc", Opts: []string{"rw"}},
+		{Device: "/dev/disk3s1", Mountpoint: "/", Fstype: "apfs", Opts: []string{"rw"}},
+		{Device: "/dev/disk3s1", Mountpoint: "/System/Volumes/Data", Fstype: "apfs", Opts: []string{"rw"}},
+		{Device: "/dev/disk1s1", Mountpoint: "/Volumes/Backup", Fstype: "hfs", Opts: []string{"rw"}},
+		{Device: "devfs", Mountpoint: "/dev", Fstype: "devfs", Opts: []string{"rw"}},
 	}, nil)
 
 	mockDisk.EXPECT().Usage("/").Return(&disk.UsageStat{
@@ -75,7 +75,7 @@ func TestGetDiskMountsDedupesSharedDevice(t *testing.T) {
 		Used:  200 * 1024 * 1024 * 1024,
 		Free:  300 * 1024 * 1024 * 1024,
 	}, nil)
-	mockDisk.EXPECT().Usage("/boot").Return(&disk.UsageStat{
+	mockDisk.EXPECT().Usage("/Volumes/Backup").Return(&disk.UsageStat{
 		Total: 1 * 1024 * 1024 * 1024,
 		Used:  256 * 1024 * 1024,
 		Free:  768 * 1024 * 1024,
@@ -86,10 +86,10 @@ func TestGetDiskMountsDedupesSharedDevice(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, mounts, 2)
-	assert.Equal(t, "/dev/nvme0n1p3", mounts[0].Device)
+	assert.Equal(t, "/dev/disk3s1", mounts[0].Device)
 	assert.Equal(t, "/", mounts[0].Mount)
-	assert.Equal(t, "/dev/nvme0n1p1", mounts[1].Device)
-	assert.Equal(t, "/boot", mounts[1].Mount)
+	assert.Equal(t, "/dev/disk1s1", mounts[1].Device)
+	assert.Equal(t, "/Volumes/Backup", mounts[1].Mount)
 }
 
 func TestGetDiskMountsSkipsFailedUsage(t *testing.T) {
