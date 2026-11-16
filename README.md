@@ -15,7 +15,7 @@
 ---
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/eb0b4e3e-e6ed-439d-a24b-640d15938510" width="600" alt="dms-gop screenshot" />
+<img src="assets/5E82AD6B-A76D-467B-82DE-CC3CE0A6E1C5.png" width="700" alt="Dms_GOP TUI screenshot on macOS with dank-theme-engine" />
 </div>
 
 System monitoring tool with CLI, Bubbletea TUI, and REST API built in Go. Fast, single binary, JSON output, OpenAPI spec.
